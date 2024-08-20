@@ -1,5 +1,6 @@
-from ctypes import *
 import platform
+
+from ctypes import *
 
 try:
     if platform.system() == 'Darwin':
