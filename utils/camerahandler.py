@@ -3,7 +3,7 @@ import time
 import numpy as np
 
 from picamera2 import Picamera2
-from .thermalcamera import ThermalCamera
+from purethermal.thermalcamera import ThermalCamera
 
 from .send_sms import send_sms
 from .parallel import thread_method
