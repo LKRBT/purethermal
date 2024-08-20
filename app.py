@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from utils.get_cfg import get_cfg
+from utils.webhandler import WebHandler
 from utils.camerahandler import CameraHandler
 
 import os
@@ -13,3 +14,6 @@ if __name__ == '__main__':
 
   cam = CameraHandler(cfg)
   cam.loop()
+  
+  web = WebHandler(cfg, cam)
+  web.run()
