@@ -5,7 +5,7 @@ import pygame
 import numpy as np
 
 from picamera2 import Picamera2
-from .thermalcamera import ThermalCamera
+from purethermal.thermalcamera import ThermalCamera
 
 
 pygame.init()
