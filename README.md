@@ -17,6 +17,7 @@ $ sudo ldconfig -v
 $ cd ../
 
 $ lsusb
+# check the idVendor and idProduct of the thermal camera
 -----------------------
     Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
     Bus 001 Device 003: ID 1e4e:0100 Cubeternet WebCam
