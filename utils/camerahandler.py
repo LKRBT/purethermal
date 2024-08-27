@@ -24,12 +24,21 @@ class CameraHandler:
         self.ircam = ThermalCamera()
         
         self.ir_res = (160, 120)
-    
+        
+        self.temp_limit = 50
+        self.temp_cont = None
+        
     def check_for_fire(self, data):
         temper = (data - 27315) / 100.0
         temper = temper.reshape(120, 160)
+        
         _, max_val, _, max_loc = cv2.minMaxLoc(temper)
-
+        
+        if max_val > self.temp_limit:
+            mask = temper > self.temp_limit
+        
+            self.temp_cont, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
         return "{:.2f}C".format(max_val), max_loc
 	
     def capture(self):
@@ -59,7 +68,21 @@ class CameraHandler:
         cv2.line(frame, (scale_w, scale_h + 5), (scale_w, scale_h + 20), (255, 255, 255), 1)
         cv2.circle(frame, (scale_w, scale_h), 5, (255, 255, 255), 1)
         cv2.putText(frame, val, (scale_w + 20, scale_h + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
+        
+        if self.temp_cont is not None:
+            for contour in self.temp_cont:
+                x, y, w, h = cv2.boundingRect(contour)
+            
+                x = int(x * size_w / 2 / self.ir_res[0])
+                y = int(y * size_h / self.ir_res[1])
+                w = int(w * size_w / 2 / self.ir_res[0])
+                h = int(h * size_h / self.ir_res[1])
+            
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 1)
+                cv2.putText(frame, "fire", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+                   
+            self.temp_cont = None
+            
         return frame
 	
     def process_rgb(self, frame):
