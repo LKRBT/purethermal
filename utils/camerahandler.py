@@ -1,43 +1,48 @@
-import sys
 import cv2
-import time
-import pygame
 import numpy as np
 
 from picamera2 import Picamera2
 from purethermal.thermalcamera import ThermalCamera
 
+from .overlaydrawer import OverlayDrawer
+from .objectdetector import ObjectDetector
 
-pygame.init()
-infoObject = pygame.display.Info()
-size_w = infoObject.current_w
-size_h = infoObject.current_h
-screen = pygame.display.set_mode((infoObject.current_w, infoObject.current_h), pygame.FULLSCREEN)
-
-clock = pygame.time.Clock()
-clock.tick(60)
-
+                
 class CameraHandler:
-    def __init__(self, cfg):
-        self.cfg = cfg
+    def __init__(self, size):
+        self.size_w, self.size_h = size
+        
+        self.obj = ObjectDetector()
+
         self.picam2 = Picamera2()
         self.ircam = ThermalCamera()
         
-        self.ir_res = (160, 120)
+        self.ir_dims = (160, 120)
+        self.new_dims = (int(self.size_w/2), self.size_h)
     
     def check_for_fire(self, data):
         temper = (data - 27315) / 100.0
         temper = temper.reshape(120, 160)
+        
         _, max_val, _, max_loc = cv2.minMaxLoc(temper)
-
+        
+        self.obj.detect_person(temper)
+        self.obj.detect_fire(temper, max_val)
+                    
         return "{:.2f}C".format(max_val), max_loc
-	
+    
     def capture(self):
         ir = self.ircam.capture()
         rgb = self.picam2.capture_array("main")
         
         return rgb, ir
     
+    def scale_loc(self, loc):
+        return int(loc[0] * self.size_w / 2 / self.ir_dims[0]), int(loc[1] * self.size_h / self.ir_dims[1])
+    
+    def scale_bbox(self, bbox):
+        return self.scale_loc((bbox[0], bbox[1])), self.scale_loc((bbox[2], bbox[3]))
+        
     def process_ir(self, frame):
         frame = cv2.flip(frame, -1)
         
@@ -47,61 +52,33 @@ class CameraHandler:
         np.right_shift(frame, 8, frame)
         frame = np.uint8(frame)
         frame = cv2.applyColorMap(frame, cv2.COLORMAP_PLASMA)
-        frame = cv2.resize(frame, (int(size_w/2), size_h), interpolation=cv2.INTER_NEAREST)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        scale_w = int(loc[0] * size_w / 2 / self.ir_res[0])
-        scale_h = int(loc[1] * size_h / self.ir_res[1])
-
-        cv2.line(frame, (scale_w - 20, scale_h), (scale_w - 5, scale_h), (255, 255, 255), 1)
-        cv2.line(frame, (scale_w + 5, scale_h), (scale_w + 20, scale_h), (255, 255, 255), 1)
-        cv2.line(frame, (scale_w, scale_h - 20), (scale_w, scale_h - 5), (255, 255, 255), 1)
-        cv2.line(frame, (scale_w, scale_h + 5), (scale_w, scale_h + 20), (255, 255, 255), 1)
-        cv2.circle(frame, (scale_w, scale_h), 5, (255, 255, 255), 1)
-        cv2.putText(frame, val, (scale_w + 20, scale_h + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
+        frame = cv2.resize(frame, self.new_dims, interpolation=cv2.INTER_NEAREST)
+        
+        OverlayDrawer.temper(frame, 
+                             self.scale_loc(loc), 
+                             val)
+        
+        if self.obj.fire_cont:
+            for contour in self.obj.fire_cont:
+                OverlayDrawer.bbox(frame, 
+                                   self.scale_bbox(cv2.boundingRect(contour)), 
+                                   "fire")
+                   
+            self.obj.fire_cont = None
+        
+        if self.obj.human_cont:
+            for contour in self.obj.human_cont:
+                OverlayDrawer.bbox(frame, 
+                                   self.scale_bbox(cv2.boundingRect(contour)), 
+                                   "person")
+                
+            self.obj.human_cont = []
+            
         return frame
 	
     def process_rgb(self, frame):
-        frame = cv2.resize(frame, (int(size_w/2), size_h), interpolation=cv2.INTER_NEAREST)
         frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2RGB)
-
+        frame = cv2.resize(frame, self.new_dims, interpolation=cv2.INTER_NEAREST)
+        
         return frame
-
-    def loop(self):
-        running = True
-        self.picam2.start()
-        while running:
-            rgb, ir = self.capture()
-            view_ir = self.process_ir(ir)
-            view_rgb = self.process_rgb(rgb)
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                if event.type == pygame.KEYDOWN:
-                    if event.key == ord('q'):
-                        running = False
-                    if event.key == ord('c'):
-                        save_rgb = cv2.cvtColor(view_rgb, cv2.COLOR_RGB2BGR)
-                        save_ir = cv2.cvtColor(view_ir, cv2.COLOR_RGB2BGR)
-                        
-                        cv2.imwrite(self.cfg['PI']['FILE_PATH'] + 'ir_' + str(time.time()) + '.png', save_ir)
-                        cv2.imwrite(self.cfg['PI']['FILE_PATH'] + 'rgb_' + str(time.time()) + '.png', save_rgb)
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    print(event.button)
-                    if event.button == 3:
-                        running = False
-
-            rgb = pygame.surfarray.make_surface(view_rgb.swapaxes(0, 1))
-            ir = pygame.surfarray.make_surface(view_ir.swapaxes(0, 1))
-	
-            screen.fill((0, 0, 0))
-            screen.blit(rgb, (0, 0))
-            screen.blit(ir, (size_w/2, 0))
-            pygame.display.flip()
-	
-            clock.tick(60)
-            
-        pygame.quit()
-        sys.exit()
