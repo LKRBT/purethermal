@@ -26,7 +26,6 @@ class CameraHandler:
         
         _, max_val, _, max_loc = cv2.minMaxLoc(temper)
         
-        self.obj.detect_person(temper)
         self.obj.detect_fire(temper, max_val)
                     
         return "{:.2f}C".format(max_val), max_loc
@@ -51,8 +50,12 @@ class CameraHandler:
         cv2.normalize(frame, frame, 0, 65535, cv2.NORM_MINMAX)
         np.right_shift(frame, 8, frame)
         frame = np.uint8(frame)
+        
         frame = cv2.applyColorMap(frame, cv2.COLORMAP_PLASMA)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        self.obj.detect_person(frame)
+        
         frame = cv2.resize(frame, self.new_dims, interpolation=cv2.INTER_NEAREST)
         
         OverlayDrawer.temper(frame, 
@@ -67,13 +70,14 @@ class CameraHandler:
                    
             self.obj.fire_cont = None
         
-        if self.obj.human_cont:
-            for contour in self.obj.human_cont:
+        if self.obj.detected:
+            for (classid, score, box) in zip(self.obj.classes, self.obj.scores, self.obj.boxes):
                 OverlayDrawer.bbox(frame, 
-                                   self.scale_bbox(cv2.boundingRect(contour)), 
-                                   "person")
-                
-            self.obj.human_cont = []
+                                   self.scale_bbox(box), 
+                                   "%s : %f" % (self.obj.class_name[classid[0]], score),
+                                   self.obj.colors[int(classid) % len(self.obj.colors)])
+        
+            self.obj.detected = False
             
         return frame
 	

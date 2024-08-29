@@ -23,7 +23,7 @@ class ViewHandler:
         self.cam.picam2.start()
         while running:
             rgb, ir = self.cam.capture()
-            
+        
             view_ir = self.cam.process_ir(ir)
             view_rgb = self.cam.process_rgb(rgb)
 

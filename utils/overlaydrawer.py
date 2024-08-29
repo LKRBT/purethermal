@@ -18,13 +18,8 @@ class OverlayDrawer:
         cv2.putText(frame, value, (x + 20, y + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
     
     @staticmethod
-    def bbox(frame, bbox, label):
-        if label == "fire":
-            color = (255, 0, 0)
-        elif label == "person":
-            color = (0, 255, 0)
-            
+    def bbox(frame, bbox, label, color=(255, 0, 0)):
         (x, y), (w, h) = bbox
-        
+            
         cv2.rectangle(frame, (x, y), (x + w, y + h), color, 1)
         cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
