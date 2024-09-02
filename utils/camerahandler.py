@@ -21,6 +21,10 @@ class CameraHandler:
     def __init__(self, cfg):
         self.cfg = cfg
         self.picam2 = Picamera2()
+        config = self.picam2.create_video_configuration(main={"size": (640, Q480), "format": "RGB888"}, 
+                                                        controls={"FrameDurationLimits": (1000000 // 100, 1000000 // 100)})
+        self.picam2.configure(config)
+	    
         self.ircam = ThermalCamera()
         
         self.ir_res = (160, 120)
@@ -92,7 +96,7 @@ class CameraHandler:
 	
     def process_rgb(self, frame):
         frame = cv2.resize(frame, (int(size_w/2), size_h), interpolation=cv2.INTER_NEAREST)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2RGB)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         return frame
 
