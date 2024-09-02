@@ -21,7 +21,7 @@ class CameraHandler:
     def __init__(self, cfg):
         self.cfg = cfg
         self.picam2 = Picamera2()
-        config = self.picam2.create_video_configuration(main={"size": (640, Q480), "format": "RGB888"}, 
+        config = self.picam2.create_video_configuration(main={"size": (640, 480), "format": "RGB888"}, 
                                                         controls={"FrameDurationLimits": (1000000 // 100, 1000000 // 100)})
         self.picam2.configure(config)
 	    
